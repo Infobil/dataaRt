@@ -4,11 +4,11 @@ library(imager)
 
 
 #import image with imager
-image=load.image(here("pixel sorting","images","banana.jpg"))
+filename="banana.jpg"
+image=load.image(here("images",filename))
 img=as.data.frame(image,wide="c")%>%rename(red=c.1,green=c.2,blue=c.3)%>%
   mutate( dark=red+green+blue,
           rgb=rgb(red,green,blue))
-
 
 # sorting whole image --------
 #along the x-axis. just selects the whole line and sorts it.
@@ -51,17 +51,18 @@ p
 
 # select to be sorted area by contrast ------------------------------------
 
-img2=img
+img2=img%>%select(x,y,red,green,blue,dark,rgb)
+
 
 #code will check the difference in darkness value between two pixels close to each other. if the value is bigger then this, it will register. change to get differnt results. (darkness 0:3)
-threshold=0.2
+threshold=seq(0.1,1.1,by=0.1)
 
 newlist=list()
 for(i in 1:max(img2$x)){
   #filters a line for x
     line=img2%>%filter(x==i )
   #subtracts the darkness-value from itself with a y-difference of two pixels. if bigger then threshold value changes
-    line$contrast=c(FALSE,FALSE,abs(line$dark[3:nrow(line)]-line$dark[1:(nrow(line)-2)])>threshold)
+    line$contrast=c(FALSE,FALSE,abs(line$dark[3:nrow(line)]-line$dark[1:(nrow(line)-2)])>sample(threshold,1))
     
   #because changes in color happen over more then one pixel, when threshold is reached, change the following five pixels to FALSE  
     for(bla in 1:(nrow(line)-5)){
@@ -94,7 +95,7 @@ for(i in 1:max(img2$x)){
       line[cords$negativ[j]:cords$start[j],7]=line[cords$start[j]:cords$endreal[j],]%>%arrange(-dark)%>%pull(rgb)
      
       #this version doesn't mirror the line but just sorts the selected part
-      #line[cords$start[j]:cords$end[j],7]=line[cords$start[j]:cords$end[j],]%>%arrange(-dark)%>%pull(rgb)
+      #▼line[cords$start[j]:cords$end[j],7]=line[cords$start[j]:cords$end[j],]%>%arrange(-dark)%>%pull(rgb)
       
      
       j=j+1 
@@ -106,7 +107,7 @@ for(i in 1:max(img2$x)){
  img2=newlist%>%bind_rows()
 
  p<- ggplot(img2,aes(x,y))+
-   geom_raster(data=img2,aes(x,y,fill=rgb))+
+   geom_raster(data=img2,aes(x,y,fill=rgb,alpha=dark/3),show.legend = FALSE)+
    
    scale_fill_identity()+
    scale_y_reverse()+
@@ -116,7 +117,8 @@ for(i in 1:max(img2$x)){
  
  p
 
- ggsave(here("sorting","results", paste0(format(Sys.time(),"%m-%d-%H.%M").png")),width=10,height=10)
+ divisor=10/max(img$x)
+ ggsave(here("pixel sorting","results", paste0(format(Sys.time(),"%m-%d-%H.%M"),"-sorted.png")),width=max(img$x)*divisor,height=max(img$y)*divisor)
 
 
 
